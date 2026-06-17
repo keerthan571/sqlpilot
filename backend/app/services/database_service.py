@@ -43,7 +43,7 @@ class DatabaseService:
 
             # Build connection URL
             connection_url = cls._build_connection_url(config)
-
+            print("CONNECTION URL:", connection_url)
             # Create engine
             engine = create_engine(
                 connection_url,
@@ -66,7 +66,7 @@ class DatabaseService:
             SchemaContext.save_schema(schema)
 
             print("SCHEMA SAVED:", schema)
-
+            
             return {
                 "success": True,
                 "message": "Database connected successfully.",
