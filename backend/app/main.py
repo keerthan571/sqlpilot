@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from app.api.query import router as query_router
 from app.api.database import router as database_router
 
 app = FastAPI(
@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 app.include_router(database_router)
-
+app.include_router(query_router)
 
 @app.get("/")
 def root():
