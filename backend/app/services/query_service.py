@@ -1,24 +1,25 @@
+from app.services.schema_context import SchemaContext
+
+
 class QueryService:
-    
+
     @staticmethod
     def generate_sql(question: str):
-        """
-        Mock SQL generator.
-        AI integration will come later.
-        """
+
+        schema = SchemaContext.get_schema()
 
         question = question.lower()
 
-        if "customers" in question:
-            sql = "SELECT * FROM customers;"
+        for table_name in schema.keys():
 
-        elif "orders" in question:
-            sql = "SELECT * FROM orders;"
+            if table_name.lower() in question:
 
-        else:
-            sql = "-- Unable to generate SQL"
+                return {
+                    "success": True,
+                    "sql": f"SELECT * FROM {table_name};"
+                }
 
         return {
             "success": True,
-            "sql": sql
+            "sql": "-- No matching table found"
         }

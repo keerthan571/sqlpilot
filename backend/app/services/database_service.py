@@ -4,16 +4,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.extractors.schema_extractor import SchemaExtractor
+from app.services.schema_context import SchemaContext
 
 
 class DatabaseService:
+
     @staticmethod
     def _build_connection_url(config) -> str:
         """
         Build SQLAlchemy connection URL based on database type.
         """
 
-        # Encode password to handle special characters like @, #, %, :, /
         password = quote_plus(config.password)
 
         if config.db_type == "postgresql":
@@ -38,21 +39,22 @@ class DatabaseService:
     @classmethod
     def test_connection(cls, config):
         try:
-            # Build connection URL
+
             connection_url = cls._build_connection_url(config)
 
-            # Create engine
             engine = create_engine(
                 connection_url,
                 pool_pre_ping=True
             )
 
-            # Verify connection
             with engine.connect():
                 pass
 
             # Extract schema
             schema = SchemaExtractor.extract(engine)
+
+            # Save schema globally for query generation
+            SchemaContext.save_schema(schema)
 
             return {
                 "success": True,
