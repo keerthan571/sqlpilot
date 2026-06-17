@@ -1,12 +1,18 @@
+from sqlalchemy import text
+
 from app.services.schema_context import SchemaContext
+from app.services.database_context import DatabaseContext
 
 
 class QueryService:
 
     @staticmethod
-    def generate_sql(question: str):
+    def execute(question: str):
 
         schema = SchemaContext.get_schema()
+        engine = DatabaseContext.get_engine()
+
+        sql = None
 
         question = question.lower()
 
@@ -14,12 +20,29 @@ class QueryService:
 
             if table_name.lower() in question:
 
-                return {
-                    "success": True,
-                    "sql": f"SELECT * FROM {table_name};"
-                }
+                sql = f"SELECT * FROM {table_name};"
+                break
+
+        if not sql:
+            return {
+                "success": False,
+                "sql": "",
+                "rows": []
+            }
+
+        with engine.connect() as conn:
+
+            result = conn.execute(
+                text(sql)
+            )
+
+            rows = [
+                dict(row._mapping)
+                for row in result
+            ]
 
         return {
             "success": True,
-            "sql": "-- No matching table found"
+            "sql": sql,
+            "rows": rows
         }

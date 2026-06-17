@@ -1,9 +1,7 @@
 from fastapi import APIRouter
 
-from app.schemas.query import (
-    QueryRequest,
-    QueryResponse
-)
+from app.schemas.query import QueryRequest
+from app.schemas.query_result import QueryExecutionResponse
 
 from app.services.query_service import QueryService
 
@@ -15,12 +13,12 @@ router = APIRouter(
 
 @router.post(
     "/generate",
-    response_model=QueryResponse
+    response_model=QueryExecutionResponse
 )
-def generate_query(request: QueryRequest):
+def generate_query(
+    request: QueryRequest
+):
 
-    result = QueryService.generate_sql(
+    return QueryService.execute(
         request.question
     )
-
-    return result
