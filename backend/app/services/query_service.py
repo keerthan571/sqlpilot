@@ -9,8 +9,13 @@ class QueryService:
     @staticmethod
     def execute(question: str):
 
+        print("QUESTION:", question)
+
         schema = SchemaContext.get_schema()
+        print("SCHEMA:", schema)
+
         engine = DatabaseContext.get_engine()
+        print("ENGINE:", engine)
 
         sql = None
 
@@ -18,12 +23,17 @@ class QueryService:
 
         for table_name in schema.keys():
 
+            print("CHECKING TABLE:", table_name)
+
             if table_name.lower() in question:
 
                 sql = f"SELECT * FROM {table_name};"
+                print("MATCH FOUND:", sql)
                 break
 
         if not sql:
+            print("NO MATCH FOUND")
+
             return {
                 "success": False,
                 "sql": "",
