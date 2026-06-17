@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -11,17 +13,20 @@ class DatabaseService:
         Build SQLAlchemy connection URL based on database type.
         """
 
+        # Encode password to handle special characters like @, #, %, :, /
+        password = quote_plus(config.password)
+
         if config.db_type == "postgresql":
             return (
                 f"postgresql+psycopg2://{config.username}:"
-                f"{config.password}@{config.host}:"
+                f"{password}@{config.host}:"
                 f"{config.port}/{config.database}"
             )
 
         elif config.db_type == "mysql":
             return (
                 f"mysql+pymysql://{config.username}:"
-                f"{config.password}@{config.host}:"
+                f"{password}@{config.host}:"
                 f"{config.port}/{config.database}"
             )
 
@@ -33,7 +38,7 @@ class DatabaseService:
     @classmethod
     def test_connection(cls, config):
         try:
-            # Build URL
+            # Build connection URL
             connection_url = cls._build_connection_url(config)
 
             # Create engine
@@ -43,8 +48,8 @@ class DatabaseService:
             )
 
             # Verify connection
-            with engine.connect() as connection:
-             pass
+            with engine.connect():
+                pass
 
             # Extract schema
             schema = SchemaExtractor.extract(engine)
