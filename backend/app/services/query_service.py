@@ -1,4 +1,5 @@
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.services.query_history_service import QueryHistoryService
 from app.services.schema_context import SchemaContext
@@ -21,9 +22,24 @@ class QueryService:
         engine = DatabaseContext.get_engine()
         print("ENGINE:", engine)
 
+        # -----------------------------------------
+        # Database connection check
+        # -----------------------------------------
+
+        if engine is None:
+            return {
+                "success": False,
+                "sql": "",
+                "rows": [],
+                "error": "Database is not connected. Please connect a database first."
+            }
+
         try:
 
-            # Generate SQL using Gemini
+            # -----------------------------------------
+            # Generate SQL
+            # -----------------------------------------
+
             sql = LLMService.generate_sql(
                 question,
                 schema
@@ -31,53 +47,44 @@ class QueryService:
 
             print("GENERATED SQL:", sql)
 
+            # -----------------------------------------
             # Gemini-controlled responses
-            if sql == "INVALID_TABLE":
+            # -----------------------------------------
 
+            if sql == "INVALID_TABLE":
                 return {
                     "success": False,
                     "sql": "",
                     "rows": [],
-                    "error": (
-                        "The requested table does not exist "
-                        "in the connected database."
-                    )
+                    "error": "The requested table does not exist in the connected database."
                 }
 
             if sql == "INVALID_COLUMN":
-
                 return {
                     "success": False,
                     "sql": "",
                     "rows": [],
-                    "error": (
-                        "The requested column does not exist "
-                        "in the connected database."
-                    )
+                    "error": "The requested column does not exist in the connected database."
                 }
 
             if sql == "UNSAFE_QUERY":
-
                 return {
                     "success": False,
                     "sql": "",
                     "rows": [],
-                    "error": (
-                        "Only read-only SELECT queries "
-                        "are allowed."
-                    )
+                    "error": "Only read-only SELECT queries are allowed."
                 }
 
-            # Backend SQL validation
-            is_valid, validation_error = (
-                SQLValidator.validate(
-                    sql,
-                    schema
-                )
+            # -----------------------------------------
+            # SQL validation
+            # -----------------------------------------
+
+            is_valid, validation_error = SQLValidator.validate(
+                sql,
+                schema
             )
 
             if not is_valid:
-
                 return {
                     "success": False,
                     "sql": "",
@@ -85,7 +92,10 @@ class QueryService:
                     "error": validation_error
                 }
 
-            # Execute validated SQL
+            # -----------------------------------------
+            # Execute SQL
+            # -----------------------------------------
+
             with engine.connect() as conn:
 
                 print("EXECUTING SQL...")
@@ -104,13 +114,29 @@ class QueryService:
                     len(rows)
                 )
 
-            # Save ONLY successfully executed queries
-            QueryHistoryService.save_query(
-                question,
-                sql
-            )
+            # -----------------------------------------
+            # Save history
+            # -----------------------------------------
 
-            print("QUERY HISTORY SAVED")
+            try:
+
+                QueryHistoryService.save_query(
+                    question,
+                    sql
+                )
+
+                print("QUERY HISTORY SAVED")
+
+            except Exception as history_error:
+
+                print(
+                    "HISTORY SAVE ERROR:",
+                    str(history_error)
+                )
+
+            # -----------------------------------------
+            # Success
+            # -----------------------------------------
 
             return {
                 "success": True,
@@ -122,13 +148,84 @@ class QueryService:
         except Exception as e:
 
             print("=" * 50)
-            print("QUERY ERROR TYPE:", type(e).__name__)
-            print("QUERY ERROR:", str(e))
+            print(
+                "QUERY ERROR TYPE:",
+                type(e).__name__
+            )
+            print(
+                "QUERY ERROR:",
+                str(e)
+            )
             print("=" * 50)
+
+            error_text = str(e).lower()
+
+            # -----------------------------------------
+            # Gemini quota
+            # -----------------------------------------
+
+            if (
+                "429" in error_text
+                or "resource_exhausted" in error_text
+                or "quota" in error_text
+            ):
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": "Gemini API quota has been exceeded. Please try again later."
+                }
+
+            # -----------------------------------------
+            # Gemini model unavailable
+            # -----------------------------------------
+
+            if (
+                "404" in error_text
+                and "model" in error_text
+            ):
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": "The configured Gemini model is currently unavailable."
+                }
+
+            # -----------------------------------------
+            # Gemini API key
+            # -----------------------------------------
+
+            if (
+                "api key" in error_text
+                or "api_key" in error_text
+                or "no api key was provided" in error_text
+            ):
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": "Gemini API key is missing or invalid."
+                }
+
+            # -----------------------------------------
+            # Database / SQLAlchemy error
+            # -----------------------------------------
+
+            if isinstance(e, SQLAlchemyError):
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": "The database could not execute the generated SQL."
+                }
+
+            # -----------------------------------------
+            # Unknown error
+            # -----------------------------------------
 
             return {
                 "success": False,
                 "sql": "",
                 "rows": [],
-                "error": str(e)
+                "error": "Unable to process the query. Please try again."
             }

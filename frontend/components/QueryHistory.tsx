@@ -12,10 +12,12 @@ interface QueryHistoryItem {
 
 interface QueryHistoryProps {
   refreshKey: number;
+  onUseQuery: (question: string) => void;
 }
 
 export default function QueryHistory({
   refreshKey,
+  onUseQuery,
 }: QueryHistoryProps) {
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,17 +82,30 @@ export default function QueryHistory({
               className="rounded-lg border border-zinc-800 bg-black p-4"
             >
 
-              <div className="mb-2">
+              <div className="mb-2 flex items-start justify-between gap-4">
 
-                <p className="font-medium text-white">
-                  {item.question}
-                </p>
+                <div>
 
-                <p className="mt-1 text-xs text-zinc-500">
-                  {new Date(
-                    item.created_at
-                  ).toLocaleString()}
-                </p>
+                  <p className="font-medium text-white">
+                    {item.question}
+                  </p>
+
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {new Date(
+                      item.created_at
+                    ).toLocaleString()}
+                  </p>
+
+                </div>
+
+                <button
+                  onClick={() =>
+                    onUseQuery(item.question)
+                  }
+                  className="shrink-0 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+                >
+                  Use Query
+                </button>
 
               </div>
 
