@@ -1,8 +1,10 @@
 from sqlalchemy import text
 
+from app.services.query_history_service import QueryHistoryService
 from app.services.schema_context import SchemaContext
 from app.services.database_context import DatabaseContext
 from app.services.llm_service import LLMService
+from app.services.sql_validator import SQLValidator
 
 
 class QueryService:
@@ -19,28 +21,71 @@ class QueryService:
         engine = DatabaseContext.get_engine()
         print("ENGINE:", engine)
 
-        # Generate SQL using Gemini
-        sql = LLMService.generate_sql(
-            question,
-            schema
-        )
-
-        print("GENERATED SQL:", sql)
-
-        # Safety check
-        clean_sql = sql.strip().lower()
-
-        if not clean_sql.startswith("select"):
-
-            return {
-                "success": False,
-                "sql": sql,
-                "rows": [],
-                "error": "Only SELECT queries are allowed"
-            }
-
         try:
 
+            # Generate SQL using Gemini
+            sql = LLMService.generate_sql(
+                question,
+                schema
+            )
+
+            print("GENERATED SQL:", sql)
+
+            # Gemini-controlled responses
+            if sql == "INVALID_TABLE":
+
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": (
+                        "The requested table does not exist "
+                        "in the connected database."
+                    )
+                }
+
+            if sql == "INVALID_COLUMN":
+
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": (
+                        "The requested column does not exist "
+                        "in the connected database."
+                    )
+                }
+
+            if sql == "UNSAFE_QUERY":
+
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": (
+                        "Only read-only SELECT queries "
+                        "are allowed."
+                    )
+                }
+
+            # Backend SQL validation
+            is_valid, validation_error = (
+                SQLValidator.validate(
+                    sql,
+                    schema
+                )
+            )
+
+            if not is_valid:
+
+                return {
+                    "success": False,
+                    "sql": "",
+                    "rows": [],
+                    "error": validation_error
+                }
+
+            # Execute validated SQL
             with engine.connect() as conn:
 
                 print("EXECUTING SQL...")
@@ -54,7 +99,18 @@ class QueryService:
                     for row in result
                 ]
 
-                print("ROWS RETURNED:", len(rows))
+                print(
+                    "ROWS RETURNED:",
+                    len(rows)
+                )
+
+            # Save ONLY successfully executed queries
+            QueryHistoryService.save_query(
+                question,
+                sql
+            )
+
+            print("QUERY HISTORY SAVED")
 
             return {
                 "success": True,
@@ -65,13 +121,14 @@ class QueryService:
 
         except Exception as e:
 
-            print("SQL ERROR:")
-            print(str(e))
+            print("=" * 50)
+            print("QUERY ERROR TYPE:", type(e).__name__)
+            print("QUERY ERROR:", str(e))
+            print("=" * 50)
 
-            # Return exact error to frontend
             return {
                 "success": False,
-                "sql": sql,
+                "sql": "",
                 "rows": [],
                 "error": str(e)
             }

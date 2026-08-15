@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.query import router as query_router
 from app.api.database import router as database_router
+from app.api.history import router as history_router
 
 app = FastAPI(
     title="SQLPilot API",
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(database_router)
 app.include_router(query_router)
+app.include_router(history_router)
 
 @app.get("/")
 def root():
