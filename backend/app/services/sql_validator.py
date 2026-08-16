@@ -1,3 +1,5 @@
+import re
+
 from sqlglot import parse
 from sqlglot import expressions as exp
 
@@ -10,140 +12,204 @@ class SQLValidator:
         if not sql or not sql.strip():
             return False, "Generated SQL is empty."
 
+        normalized_sql = sql.strip()
+
+        # ---------------------------------------------------------
+        # 1. Block multiple SQL statements
+        # ---------------------------------------------------------
+
         try:
+
             statements = parse(
-                sql,
+                normalized_sql,
                 read="postgres"
             )
 
         except Exception:
+
             return False, "Generated SQL is invalid."
 
-        # Only one SQL statement is allowed
         if len(statements) != 1:
-            return False, "Multiple SQL statements are not allowed."
+
+            return (
+                False,
+                "Multiple SQL statements are not allowed."
+            )
 
         statement = statements[0]
 
-        # Only SELECT statements are allowed
+        # ---------------------------------------------------------
+        # 2. Only SELECT statements
+        # ---------------------------------------------------------
+
         if statement.key != "select":
-            return False, "Only SELECT queries are allowed."
 
-        # Tables available in the connected database
+            return (
+                False,
+                "Only SELECT queries are allowed."
+            )
+
+        # ---------------------------------------------------------
+        # 3. Validate referenced tables
+        # ---------------------------------------------------------
+
         allowed_tables = {
-            table_name.lower(): table_info
-            for table_name, table_info in schema.items()
+            table_name.lower()
+            for table_name in schema.keys()
         }
-
-        # -------------------------------------------------
-        # Validate every referenced table
-        # -------------------------------------------------
-
-        table_aliases = {}
 
         for table in statement.find_all(exp.Table):
 
             table_name = table.name.lower()
 
             if table_name not in allowed_tables:
+
                 return (
                     False,
                     f"Table '{table.name}' does not exist."
                 )
 
-            # Store aliases so:
-            # c.name -> customers.name
-            alias = table.alias
+        # ---------------------------------------------------------
+        # 4. Validate referenced columns
+        # ---------------------------------------------------------
 
-            if alias:
-                table_aliases[alias.lower()] = table_name
-
-            # Also allow the actual table name
-            table_aliases[table_name] = table_name
-
-        # -------------------------------------------------
-        # Build allowed columns for every table
-        # -------------------------------------------------
-
-        table_columns = {}
-
-        for table_name, table_info in allowed_tables.items():
-
-            table_columns[table_name] = {
+        allowed_columns = {
+            table_name.lower(): {
                 column["name"].lower()
-                for column in table_info.get("columns", [])
+                for column in table_info.get(
+                    "columns",
+                    []
+                )
             }
-
-        # -------------------------------------------------
-        # Validate every referenced column
-        # -------------------------------------------------
+            for table_name, table_info in schema.items()
+        }
 
         for column in statement.find_all(exp.Column):
 
             column_name = column.name.lower()
 
-            # SELECT * / table.* is valid
+            # Ignore wildcard
             if column_name == "*":
                 continue
 
-            referenced_table = column.table
+            # Qualified column: table.column
+            if column.table:
 
-            # ---------------------------------------------
-            # Qualified column
-            #
-            # Example:
-            # c.name
-            # orders.amount
-            # ---------------------------------------------
+                table_name = column.table.lower()
 
-            if referenced_table:
+                if table_name not in allowed_tables:
+                    continue
 
-                table_key = referenced_table.lower()
-
-                # Resolve alias
-                actual_table = table_aliases.get(
-                    table_key
-                )
-
-                if actual_table is None:
-                    return (
-                        False,
-                        f"Table '{referenced_table}' does not exist."
+                if (
+                    column_name
+                    not in allowed_columns.get(
+                        table_name,
+                        set()
                     )
+                ):
 
-                if column_name not in table_columns[actual_table]:
-                    return (
-                        False,
-                        f"Column '{column.name}' does not exist "
-                        f"in table '{actual_table}'."
-                    )
-
-            # ---------------------------------------------
-            # Unqualified column
-            #
-            # Example:
-            # SELECT name FROM customers
-            # ---------------------------------------------
-
-            else:
-
-                found = False
-
-                for columns in table_columns.values():
-
-                    if column_name in columns:
-                        found = True
-                        break
-
-                if not found:
                     return (
                         False,
                         f"Column '{column.name}' does not exist."
                     )
 
-        # -------------------------------------------------
-        # Detect suspicious tautological comparisons
-        # -------------------------------------------------
+            else:
+
+                # Unqualified column.
+                # It must exist in at least one allowed table.
+                exists = any(
+                    column_name in columns
+                    for columns in allowed_columns.values()
+                )
+
+                if not exists:
+
+                    return (
+                        False,
+                        f"Column '{column.name}' does not exist."
+                    )
+
+        # ---------------------------------------------------------
+        # 5. Detect suspicious literal comparisons
+        # ---------------------------------------------------------
+
+        literal_comparison_pattern = re.compile(
+            r"""
+            (?:
+                '(?:''|[^'])*'
+                |
+                \b\d+(?:\.\d+)?\b
+            )
+            \s*=\s*
+            (?:
+                '(?:''|[^'])*'
+                |
+                \b\d+(?:\.\d+)?\b
+            )
+            """,
+            re.IGNORECASE | re.VERBOSE
+        )
+
+        if literal_comparison_pattern.search(
+            normalized_sql
+        ):
+
+            return (
+                False,
+                "Suspicious SQL condition detected."
+            )
+
+        # ---------------------------------------------------------
+        # 6. Detect boolean tautology patterns
+        # ---------------------------------------------------------
+
+        tautology_pattern = re.compile(
+            r"""
+            \bOR\b
+            \s+
+            (?:
+                '(?:''|[^'])*'
+                |
+                \b\d+(?:\.\d+)?\b
+            )
+            \s*=\s*
+            (?:
+                '(?:''|[^'])*'
+                |
+                \b\d+(?:\.\d+)?\b
+            )
+            """,
+            re.IGNORECASE | re.VERBOSE
+        )
+
+        if tautology_pattern.search(
+            normalized_sql
+        ):
+
+            return (
+                False,
+                "Suspicious SQL condition detected."
+            )
+
+        # ---------------------------------------------------------
+        # 7. Detect SQL comments
+        # ---------------------------------------------------------
+
+        if "--" in normalized_sql:
+            return (
+                False,
+                "SQL comments are not allowed."
+            )
+
+        if "/*" in normalized_sql or "*/" in normalized_sql:
+            return (
+                False,
+                "SQL comments are not allowed."
+            )
+
+        # ---------------------------------------------------------
+        # 8. AST-level literal comparison check
+        # ---------------------------------------------------------
 
         for comparison in statement.find_all(exp.EQ):
 

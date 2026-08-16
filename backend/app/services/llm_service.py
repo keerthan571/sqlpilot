@@ -1,4 +1,5 @@
 import os
+import time
 
 from dotenv import load_dotenv
 from google import genai
@@ -107,27 +108,88 @@ USER QUESTION:
 {question}
 """
 
-        response = client.models.generate_content(
-            model="gemini-3.5-flash",
-            contents=prompt
+        # Try lightweight model first.
+        models = [
+            "gemini-3.5-flash-lite",
+            "gemini-3.1-flash-lite",
+        ]
+
+        last_error = None
+
+        for model in models:
+
+            for attempt in range(2):
+
+                try:
+
+                    print(
+                        f"TRYING GEMINI MODEL: "
+                        f"{model} "
+                        f"(attempt {attempt + 1})"
+                    )
+
+                    response = client.models.generate_content(
+                        model=model,
+                        contents=prompt
+                    )
+
+                    if not response.text:
+
+                        raise ValueError(
+                            "Gemini returned an empty response."
+                        )
+
+                    sql = response.text.strip()
+
+                    # Remove markdown if Gemini returns it
+                    sql = sql.replace(
+                        "```sql",
+                        ""
+                    )
+
+                    sql = sql.replace(
+                        "```",
+                        ""
+                    )
+
+                    print(
+                        f"SUCCESSFUL GEMINI MODEL: {model}"
+                    )
+
+                    return sql.strip()
+
+                except Exception as e:
+
+                    last_error = e
+
+                    error_text = str(e)
+
+                    print(
+                        f"GEMINI ERROR "
+                        f"({model}, attempt "
+                        f"{attempt + 1}): "
+                        f"{error_text}"
+                    )
+
+                    # Retry only temporary server errors.
+                    if "503" in error_text:
+
+                        if attempt == 0:
+
+                            time.sleep(2)
+
+                            continue
+
+                        break
+
+                    # Don't retry authentication/quota errors.
+                    raise
+
+        # All models failed.
+        if last_error:
+
+            raise last_error
+
+        raise RuntimeError(
+            "Unable to generate SQL."
         )
-
-        if not response.text:
-            raise ValueError(
-                "Gemini returned an empty response."
-            )
-
-        sql = response.text.strip()
-
-        # Remove markdown if Gemini returns it
-        sql = sql.replace(
-            "```sql",
-            ""
-        )
-
-        sql = sql.replace(
-            "```",
-            ""
-        )
-
-        return sql.strip()

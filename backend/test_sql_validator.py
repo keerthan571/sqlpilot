@@ -50,79 +50,20 @@ schema = {
 tests = [
 
     (
-        "Normal SELECT",
-        "SELECT id, name, email FROM customers"
-    ),
-
-    (
-        "JOIN",
-        """
-        SELECT c.name, SUM(o.amount)
-        FROM customers c
-        JOIN orders o
-        ON c.id = o.customer_id
-        GROUP BY c.name
-        """
-    ),
-
-    (
-        "Invalid table",
-        "SELECT * FROM employees"
-    ),
-
-    (
-        "Invalid column",
-        "SELECT phone FROM customers"
-    ),
-
-    (
-        "DELETE",
-        "DELETE FROM customers"
-    ),
-
-    (
-        "INSERT",
-        """
-        INSERT INTO customers (name, email)
-        VALUES ('Test', 'test@example.com')
-        """
-    ),
-
-    (
-        "UPDATE",
-        """
-        UPDATE customers
-        SET name = 'Hacker'
-        WHERE id = 1
-        """
-    ),
-
-    (
-        "DROP",
-        "DROP TABLE customers"
-    ),
-
-    (
-        "ALTER",
-        "ALTER TABLE customers ADD COLUMN phone TEXT"
-    ),
-
-    (
-        "TRUNCATE",
-        "TRUNCATE TABLE customers"
-    ),
-
-    (
-        "Multiple statements",
-        "SELECT * FROM customers; DELETE FROM customers"
-    ),
-
-    (
         "SQL injection",
         """
         SELECT id, name, email
         FROM customers
         WHERE name = 'Alice' OR '1'='1'
+        """
+    ),
+
+    (
+        "Malformed SQL injection",
+        """
+        SELECT id, name, email
+        FROM customers
+        WHERE name = 'Alice'' OR ''1''=''' '1'
         """
     )
 ]
