@@ -1,5 +1,6 @@
 from typing import Literal
-from pydantic import BaseModel
+
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class DatabaseConnectionRequest(BaseModel):
@@ -12,7 +13,16 @@ class DatabaseConnectionRequest(BaseModel):
 
 
 class DatabaseConnectionResponse(BaseModel):
+
+    model_config = ConfigDict(
+        populate_by_name=True
+    )
+
     success: bool
     message: str
     database_type: str
-    schema: dict | None = None
+
+    schema_: dict | None = Field(
+        default=None,
+        alias="schema"
+    )

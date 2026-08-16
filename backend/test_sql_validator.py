@@ -4,22 +4,51 @@ from app.services.sql_validator import SQLValidator
 schema = {
     "customers": {
         "columns": [
-            {"name": "id"},
-            {"name": "name"},
-            {"name": "email"}
-        ]
+            {
+                "name": "id",
+                "type": "INTEGER"
+            },
+            {
+                "name": "name",
+                "type": "VARCHAR(100)"
+            },
+            {
+                "name": "email",
+                "type": "VARCHAR(100)"
+            }
+        ],
+        "primary_keys": ["id"],
+        "foreign_keys": []
     },
     "orders": {
         "columns": [
-            {"name": "id"},
-            {"name": "customer_id"},
-            {"name": "amount"}
+            {
+                "name": "id",
+                "type": "INTEGER"
+            },
+            {
+                "name": "customer_id",
+                "type": "INTEGER"
+            },
+            {
+                "name": "amount",
+                "type": "NUMERIC(10, 2)"
+            }
+        ],
+        "primary_keys": ["id"],
+        "foreign_keys": [
+            {
+                "column": ["customer_id"],
+                "references_table": "customers",
+                "references_column": ["id"]
+            }
         ]
     }
 }
 
 
 tests = [
+
     (
         "Normal SELECT",
         "SELECT id, name, email FROM customers"
@@ -42,8 +71,45 @@ tests = [
     ),
 
     (
+        "Invalid column",
+        "SELECT phone FROM customers"
+    ),
+
+    (
         "DELETE",
         "DELETE FROM customers"
+    ),
+
+    (
+        "INSERT",
+        """
+        INSERT INTO customers (name, email)
+        VALUES ('Test', 'test@example.com')
+        """
+    ),
+
+    (
+        "UPDATE",
+        """
+        UPDATE customers
+        SET name = 'Hacker'
+        WHERE id = 1
+        """
+    ),
+
+    (
+        "DROP",
+        "DROP TABLE customers"
+    ),
+
+    (
+        "ALTER",
+        "ALTER TABLE customers ADD COLUMN phone TEXT"
+    ),
+
+    (
+        "TRUNCATE",
+        "TRUNCATE TABLE customers"
     ),
 
     (
@@ -62,15 +128,17 @@ tests = [
 ]
 
 
-for test_name, sql in tests:
+print("=" * 70)
+
+for name, sql in tests:
 
     valid, error = SQLValidator.validate(
         sql,
         schema
     )
 
-    print("=" * 60)
-    print(test_name)
+    print(name)
     print("SQL:", sql.strip())
     print("VALID:", valid)
     print("ERROR:", error)
+    print("-" * 70)
