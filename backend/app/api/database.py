@@ -36,3 +36,10 @@ def disconnect_database():
         "success": True,
         "message": "Database disconnected successfully."
     }
+
+@router.get("/status")
+def database_status():
+
+    return {
+        "connected": DatabaseContext.get_engine() is not None
+    }
