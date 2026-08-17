@@ -18,3 +18,6 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# SQLPilot local connection registry
+sqlpilot_connections.db

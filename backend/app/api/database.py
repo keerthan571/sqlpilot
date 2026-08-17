@@ -5,12 +5,20 @@ from app.schemas.database import (
     DatabaseConnectionResponse,
 )
 from app.services.database_service import DatabaseService
+from app.services.saved_connection_service import SavedConnectionService
 
 router = APIRouter(
     prefix="/api/database",
     tags=["Database"]
 )
 
+@router.get("/saved")
+def get_saved_connections():
+    return SavedConnectionService.list_connections()
+
+@router.post("/reconnect/{connection_id}")
+def reconnect_database(connection_id: int):
+    return DatabaseService.reconnect(connection_id)
 
 @router.post("/connect", response_model=DatabaseConnectionResponse)
 def connect_database(request: DatabaseConnectionRequest):
