@@ -9,3 +9,7 @@ class SchemaContext:
     @classmethod
     def get_schema(cls):
         return cls.schema
+
+    @classmethod
+    def clear_schema(cls):
+        cls.schema = {}

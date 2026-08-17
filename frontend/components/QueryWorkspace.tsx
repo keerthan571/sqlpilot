@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import QueryHistory from "@/components/QueryHistory";
 
 export default function QueryWorkspace() {
+  const router = useRouter();
+
   const [question, setQuestion] = useState("");
   const [sql, setSql] = useState("");
   const [rows, setRows] = useState<any[]>([]);
@@ -13,6 +16,25 @@ export default function QueryWorkspace() {
   const [loading, setLoading] = useState(false);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
+  const disconnectDatabase = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      await api.post("/api/database/disconnect");
+
+      router.push("/connect");
+    } catch (error: any) {
+      console.error("DISCONNECT ERROR:", error);
+
+      setError(
+        error.response?.data?.message ||
+        "Unable to disconnect from the database."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
   const generateQuery = async () => {
     if (!question.trim()) {
       setError("Please enter a question.");
@@ -84,9 +106,31 @@ export default function QueryWorkspace() {
       {/* Main Query Box */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
 
-        <h1 className="mb-4 text-3xl font-bold text-white">
-          SQLPilot 🚀
-        </h1>
+        <div className="mb-6 flex items-center justify-between gap-4">
+
+          <div>
+            <h1 className="text-3xl font-bold text-white">
+              SQLPilot 🚀
+            </h1>
+
+            <div className="mt-2 flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+
+              <span className="text-sm text-zinc-400">
+                Database connected
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={disconnectDatabase}
+            disabled={loading}
+            className="rounded-lg border border-red-900/60 bg-red-950/30 px-4 py-2 text-sm font-medium text-red-400 transition hover:border-red-700 hover:bg-red-950/60 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Disconnect
+          </button>
+
+        </div>
 
         <textarea
           value={question}

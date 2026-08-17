@@ -6,6 +6,8 @@ from app.schemas.database import (
 )
 from app.services.database_service import DatabaseService
 from app.services.saved_connection_service import SavedConnectionService
+from app.services.database_context import DatabaseContext
+from app.services.schema_context import SchemaContext
 
 router = APIRouter(
     prefix="/api/database",
@@ -23,3 +25,14 @@ def reconnect_database(connection_id: int):
 @router.post("/connect", response_model=DatabaseConnectionResponse)
 def connect_database(request: DatabaseConnectionRequest):
     return DatabaseService.test_connection(request)
+
+@router.post("/disconnect")
+def disconnect_database():
+
+    DatabaseContext.clear_engine()
+    SchemaContext.clear_schema()
+
+    return {
+        "success": True,
+        "message": "Database disconnected successfully."
+    }

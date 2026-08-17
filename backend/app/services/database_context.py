@@ -9,3 +9,7 @@ class DatabaseContext:
     @classmethod
     def get_engine(cls):
         return cls.engine
+
+    @classmethod
+    def clear_engine(cls):
+        cls.engine = None
