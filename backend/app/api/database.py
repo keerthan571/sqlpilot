@@ -18,6 +18,22 @@ router = APIRouter(
 def get_saved_connections():
     return SavedConnectionService.list_connections()
 
+@router.delete("/saved/{connection_id}")
+def delete_saved_connection(connection_id: int):
+
+    deleted = SavedConnectionService.delete(connection_id)
+
+    if not deleted:
+        return {
+            "success": False,
+            "message": "Saved connection not found."
+        }
+
+    return {
+        "success": True,
+        "message": "Saved connection deleted successfully."
+    }
+
 @router.post("/reconnect/{connection_id}")
 def reconnect_database(connection_id: int):
     return DatabaseService.reconnect(connection_id)

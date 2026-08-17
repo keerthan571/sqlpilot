@@ -142,6 +142,7 @@ export default function DatabaseConnectionForm() {
         formData
       );
 
+
       setResponse(res.data);
 
       if (res.data.success) {
@@ -170,6 +171,13 @@ export default function DatabaseConnectionForm() {
         `/api/database/reconnect/${connectionId}`
       );
 
+      if (res.data.success) {
+        router.push("/query");
+        return;
+      }
+
+      setResponse(res.data);
+
       setResponse(res.data);
     } catch (err: any) {
       setResponse({
@@ -186,24 +194,49 @@ export default function DatabaseConnectionForm() {
   const handleDelete = async (
     connectionId: number
   ) => {
+    const connection = savedConnections.find(
+      (item) => item.id === connectionId
+    );
+
+    if (!connection) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Remove "${connection.name}" from saved connections?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
       setDeletingId(connectionId);
 
-      await api.delete(
+      const response = await api.delete(
         `/api/database/saved/${connectionId}`
       );
 
+      if (!response.data.success) {
+        throw new Error(
+          response.data.message ||
+          "Unable to remove the saved connection."
+        );
+      }
+
+      // Immediately remove it from the UI
       setSavedConnections((previous) =>
         previous.filter(
-          (connection) =>
-            connection.id !== connectionId
+          (item) => item.id !== connectionId
         )
       );
+
     } catch (err: any) {
       setResponse({
         success: false,
         message:
           err.response?.data?.message ||
+          err.message ||
           "Unable to remove the saved connection.",
       });
     } finally {
@@ -464,14 +497,31 @@ export default function DatabaseConnectionForm() {
 
           </section>
         )}
+        {/* Empty Saved Connections */}
+        {!loadingSaved && savedConnections.length === 0 && (
+          <section className="mx-auto mt-10 max-w-5xl">
+            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/30 px-6 py-8 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-xl">
+                🗄️
+              </div>
 
+              <h2 className="mt-4 text-sm font-semibold text-zinc-300">
+                No saved connections
+              </h2>
+
+              <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-zinc-600">
+                Your previously connected databases will appear here so
+                you can reconnect without entering your credentials again.
+              </p>
+            </div>
+          </section>
+        )}
         {/* Connection Card */}
         <section
-          className={`mx-auto max-w-5xl overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/55 shadow-2xl shadow-black/40 backdrop-blur ${
-            savedConnections.length > 0 || loadingSaved
-              ? "mt-8"
-              : "mt-10"
-          }`}
+          className={`mx-auto max-w-5xl overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/55 shadow-2xl shadow-black/40 backdrop-blur ${savedConnections.length > 0 || loadingSaved
+            ? "mt-8"
+            : "mt-10"
+            }`}
         >
 
           {/* Card heading */}
@@ -522,11 +572,10 @@ export default function DatabaseConnectionForm() {
                           database.value
                         )
                       }
-                      className={`group rounded-xl border p-4 text-left transition duration-200 ${
-                        selected
-                          ? "border-blue-500/60 bg-blue-500/8 shadow-lg shadow-blue-500/5"
-                          : "border-zinc-800 bg-zinc-950/40 hover:border-zinc-700 hover:bg-zinc-900"
-                      }`}
+                      className={`group rounded-xl border p-4 text-left transition duration-200 ${selected
+                        ? "border-blue-500/60 bg-blue-500/8 shadow-lg shadow-blue-500/5"
+                        : "border-zinc-800 bg-zinc-950/40 hover:border-zinc-700 hover:bg-zinc-900"
+                        }`}
                     >
 
                       <div className="flex items-center justify-between">
@@ -706,21 +755,19 @@ export default function DatabaseConnectionForm() {
             {/* Response */}
             {response && (
               <div
-                className={`mt-6 rounded-xl border p-5 ${
-                  response.success
-                    ? "border-emerald-500/20 bg-emerald-500/5"
-                    : "border-red-500/20 bg-red-500/5"
-                }`}
+                className={`mt-6 rounded-xl border p-5 ${response.success
+                  ? "border-emerald-500/20 bg-emerald-500/5"
+                  : "border-red-500/20 bg-red-500/5"
+                  }`}
               >
 
                 <div className="flex items-start gap-3">
 
                   <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                      response.success
-                        ? "bg-emerald-500/10 text-emerald-400"
-                        : "bg-red-500/10 text-red-400"
-                    }`}
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${response.success
+                      ? "bg-emerald-500/10 text-emerald-400"
+                      : "bg-red-500/10 text-red-400"
+                      }`}
                   >
                     {response.success
                       ? "✓"
@@ -730,11 +777,10 @@ export default function DatabaseConnectionForm() {
                   <div className="min-w-0">
 
                     <p
-                      className={`text-sm font-semibold ${
-                        response.success
-                          ? "text-emerald-300"
-                          : "text-red-300"
-                      }`}
+                      className={`text-sm font-semibold ${response.success
+                        ? "text-emerald-300"
+                        : "text-red-300"
+                        }`}
                     >
                       {response.success
                         ? "Database connected successfully"
