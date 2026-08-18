@@ -5,10 +5,12 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class DatabaseConnectionRequest(BaseModel):
     db_type: Literal["postgresql", "mysql", "sqlite"]
-    host: str
-    port: int
-    username: str
-    password: str
+
+    host: str = ""
+    port: int = 0
+    username: str = ""
+    password: str = ""
+
     database: str
 
 

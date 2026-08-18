@@ -8,6 +8,7 @@ from app.services.schema_context import SchemaContext
 from app.services.database_context import DatabaseContext
 from app.services.saved_connection_service import SavedConnectionService
 
+
 class DatabaseService:
 
     @staticmethod
@@ -48,12 +49,34 @@ class DatabaseService:
 
         raise ValueError("Unsupported database type")
 
+    @staticmethod
+    def _create_engine(connection_url: str, db_type: str):
+
+        if db_type == "sqlite":
+            return create_engine(
+                connection_url,
+                pool_pre_ping=True,
+                connect_args={
+                    "timeout": 10
+                }
+            )
+
+        return create_engine(
+            connection_url,
+            pool_pre_ping=True,
+            connect_args={
+                "connect_timeout": 10
+            }
+        )
+
     @classmethod
     def test_connection(cls, config):
+
         try:
 
             # Build connection URL
             connection_url = cls._build_connection_url(config)
+
             print(
                 "CONNECTING TO DATABASE:",
                 config.db_type,
@@ -61,20 +84,18 @@ class DatabaseService:
                 config.port,
                 config.database
             )
-            # Create engine
-            engine = create_engine(
+
+            # Create database-specific engine
+            engine = cls._create_engine(
                 connection_url,
-                pool_pre_ping=True,
-                connect_args={
-                    "connect_timeout": 10
-                }
+                config.db_type
             )
 
-            # Test connection before saving it globally
+            # Test connection
             with engine.connect():
                 pass
 
-            # Save only a verified connection
+            # Save verified engine globally
             DatabaseContext.set_engine(engine)
 
             print("VERIFIED ENGINE SAVED")
@@ -92,6 +113,16 @@ class DatabaseService:
 
             print(
                 "SAVED CONNECTION ID:",
+                saved_connection_id
+            )
+
+            # Remember the currently active saved connection
+            DatabaseContext.set_connection_id(
+                saved_connection_id
+            )
+
+            print(
+                "ACTIVE CONNECTION ID:",
                 saved_connection_id
             )
 
@@ -130,6 +161,7 @@ class DatabaseService:
     def reconnect(cls, connection_id: int):
 
         try:
+
             # Retrieve saved credentials internally
             saved = SavedConnectionService.get_connection(
                 connection_id
@@ -154,25 +186,32 @@ class DatabaseService:
                 saved["database_name"]
             )
 
-            # Create engine
-            engine = create_engine(
+            # Create database-specific engine
+            engine = cls._create_engine(
                 connection_url,
-                pool_pre_ping=True,
-                connect_args={
-                    "connect_timeout": 10
-                }
+                saved["db_type"]
             )
 
-            # Test connection before saving it globally
+            # Test connection
             with engine.connect():
                 pass
 
-            # Save engine globally
+            # Save verified engine globally
             DatabaseContext.set_engine(engine)
+
+            # Remember the currently active connection
+            DatabaseContext.set_connection_id(
+                connection_id
+            )
 
             print(
                 "RECONNECTED ENGINE SAVED:",
                 engine
+            )
+
+            print(
+                "ACTIVE CONNECTION ID:",
+                connection_id
             )
 
             # Extract schema

@@ -15,28 +15,25 @@ interface QueryHistoryProps {
   onUseQuery: (question: string) => void;
 }
 
+const INITIAL_HISTORY_COUNT = 5;
+
 export default function QueryHistory({
   refreshKey,
   onUseQuery,
 }: QueryHistoryProps) {
   const [history, setHistory] = useState<QueryHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   const loadHistory = async () => {
     try {
       setLoading(true);
 
-      const response = await api.get(
-        "/api/history"
-      );
+      const response = await api.get("/api/history");
 
       setHistory(response.data || []);
-
     } catch (error) {
-      console.error(
-        "HISTORY API ERROR:",
-        error
-      );
+      console.error("HISTORY API ERROR:", error);
     } finally {
       setLoading(false);
     }
@@ -46,80 +43,153 @@ export default function QueryHistory({
     loadHistory();
   }, [refreshKey]);
 
+  const visibleHistory = showAll
+    ? history
+    : history.slice(0, INITIAL_HISTORY_COUNT);
+
   return (
-    <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+    <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-xl shadow-black/20 sm:p-6">
 
-      <div className="mb-4 flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-        <h2 className="text-xl font-semibold text-white">
-          Query History
-        </h2>
+        <div>
+          <div className="flex items-center gap-3">
+
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-lg">
+              🕘
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                Query History
+              </h2>
+
+              <p className="text-sm text-zinc-500">
+                {history.length}{" "}
+                {history.length === 1
+                  ? "saved query"
+                  : "saved queries"}
+              </p>
+            </div>
+
+          </div>
+        </div>
 
         <button
           onClick={loadHistory}
-          className="rounded bg-zinc-800 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-700"
+          disabled={loading}
+          className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Refresh
+          {loading ? "Refreshing..." : "Refresh"}
         </button>
 
       </div>
 
+      {/* Loading */}
       {loading ? (
-        <p className="text-zinc-400">
-          Loading history...
-        </p>
+
+        <div className="rounded-xl border border-zinc-800 bg-black/30 p-8 text-center">
+          <div className="text-sm text-zinc-400">
+            Loading query history...
+          </div>
+        </div>
+
       ) : history.length === 0 ? (
-        <p className="text-zinc-500">
-          No query history yet.
-        </p>
+
+        <div className="rounded-xl border border-dashed border-zinc-800 bg-black/20 p-10 text-center">
+
+          <div className="text-3xl">
+            🗂️
+          </div>
+
+          <p className="mt-3 font-medium text-zinc-300">
+            No query history yet
+          </p>
+
+          <p className="mt-1 text-sm text-zinc-500">
+            Your successful queries will appear here.
+          </p>
+
+        </div>
+
       ) : (
-        <div className="space-y-4">
 
-          {history.map((item) => (
+        <>
+          <div className="space-y-3">
 
-            <div
-              key={item.id}
-              className="rounded-lg border border-zinc-800 bg-black p-4"
-            >
+            {visibleHistory.map((item) => (
 
-              <div className="mb-2 flex items-start justify-between gap-4">
+              <div
+                key={item.id}
+                className="group rounded-xl border border-zinc-800 bg-black/40 p-4 transition hover:border-zinc-700 hover:bg-black/60"
+              >
 
-                <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 
-                  <p className="font-medium text-white">
-                    {item.question}
-                  </p>
+                  <div className="min-w-0 flex-1">
 
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {new Date(
-                      item.created_at
-                    ).toLocaleString()}
-                  </p>
+                    <p className="truncate font-medium text-zinc-100">
+                      {item.question}
+                    </p>
+
+                    <p className="mt-1 text-xs text-zinc-500">
+                      {new Date(
+                        item.created_at
+                      ).toLocaleString()}
+                    </p>
+
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      onUseQuery(item.question)
+                    }
+                    className="shrink-0 rounded-lg border border-blue-500/30 bg-blue-600/10 px-3 py-2 text-sm font-medium text-blue-400 transition hover:bg-blue-600 hover:text-white"
+                  >
+                    Use Query →
+                  </button>
 
                 </div>
 
-                <button
-                  onClick={() =>
-                    onUseQuery(item.question)
-                  }
-                  className="shrink-0 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
-                >
-                  Use Query
-                </button>
+                <div className="mt-3 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950">
+
+                  <pre className="max-h-20 overflow-auto p-3 text-xs leading-6 text-emerald-400">
+                    {item.generated_sql}
+                  </pre>
+
+                </div>
 
               </div>
 
-              <pre className="overflow-x-auto rounded bg-zinc-900 p-3 text-sm text-green-400">
-                {item.generated_sql}
-              </pre>
+            ))}
+
+          </div>
+
+          {/* Show More / Less */}
+          {history.length > INITIAL_HISTORY_COUNT && (
+
+            <div className="mt-5 flex justify-center">
+
+              <button
+                onClick={() =>
+                  setShowAll((previous) => !previous)
+                }
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-5 py-2 text-sm font-medium text-zinc-300 transition hover:bg-zinc-700"
+              >
+                {showAll
+                  ? "Show Less"
+                  : `Show All ${history.length} Queries`}
+              </button>
 
             </div>
 
-          ))}
+          )}
 
-        </div>
+        </>
+
       )}
 
-    </div>
+    </section>
   );
 }

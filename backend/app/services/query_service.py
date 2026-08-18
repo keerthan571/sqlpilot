@@ -22,6 +22,10 @@ class QueryService:
         engine = DatabaseContext.get_engine()
         print("ENGINE:", engine)
 
+        # Get currently active saved connection
+        connection_id = DatabaseContext.get_connection_id()
+        print("ACTIVE CONNECTION ID:", connection_id)
+
         # -----------------------------------------
         # Database connection check
         # -----------------------------------------
@@ -32,6 +36,14 @@ class QueryService:
                 "sql": "",
                 "rows": [],
                 "error": "Database is not connected. Please connect a database first."
+            }
+
+        if connection_id is None:
+            return {
+                "success": False,
+                "sql": "",
+                "rows": [],
+                "error": "No active database connection found."
             }
 
         try:
@@ -121,11 +133,15 @@ class QueryService:
             try:
 
                 QueryHistoryService.save_query(
+                    connection_id,
                     question,
                     sql
                 )
 
-                print("QUERY HISTORY SAVED")
+                print(
+                    "QUERY HISTORY SAVED FOR CONNECTION:",
+                    connection_id
+                )
 
             except Exception as history_error:
 

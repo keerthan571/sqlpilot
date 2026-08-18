@@ -119,12 +119,28 @@ export default function DatabaseConnectionForm() {
     setFormData((previous) => ({
       ...previous,
       db_type: type,
+
+      host:
+        type === "sqlite"
+          ? ""
+          : previous.host || "localhost",
+
       port:
         type === "postgresql"
           ? 5432
           : type === "mysql"
             ? 3306
             : 0,
+
+      username:
+        type === "sqlite"
+          ? ""
+          : previous.username,
+
+      password:
+        type === "sqlite"
+          ? ""
+          : previous.password,
     }));
 
     if (response) {
@@ -258,6 +274,8 @@ export default function DatabaseConnectionForm() {
     );
   };
 
+  const isSQLite = formData.db_type === "sqlite";
+
   return (
     <main className="min-h-screen bg-[#050505] text-white">
 
@@ -369,7 +387,7 @@ export default function DatabaseConnectionForm() {
                     const isDeleting =
                       deletingId ===
                       connection.id;
-
+                    
                     return (
                       <div
                         key={connection.id}
@@ -609,58 +627,15 @@ export default function DatabaseConnectionForm() {
             </div>
 
             {/* Fields */}
-            <div className="mt-8 grid gap-x-5 gap-y-5 md:grid-cols-2">
+            {isSQLite ? (
 
-              {/* Host */}
-              <div className="md:col-span-2">
-
-                <label
-                  htmlFor="host"
-                  className="mb-2 block text-xs font-medium text-zinc-400"
-                >
-                  Host
-                </label>
-
-                <input
-                  id="host"
-                  name="host"
-                  value={formData.host}
-                  onChange={handleChange}
-                  placeholder="localhost"
-                  className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-                />
-
-              </div>
-
-              {/* Port */}
-              <div>
-
-                <label
-                  htmlFor="port"
-                  className="mb-2 block text-xs font-medium text-zinc-400"
-                >
-                  Port
-                </label>
-
-                <input
-                  id="port"
-                  name="port"
-                  type="number"
-                  value={formData.port}
-                  onChange={handleChange}
-                  className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-                />
-
-              </div>
-
-              {/* Database */}
-              <div>
+              <div className="mt-8">
 
                 <label
                   htmlFor="database"
                   className="mb-2 block text-xs font-medium text-zinc-400"
                 >
-                  Database name
+                  Database path
                 </label>
 
                 <input
@@ -668,57 +643,137 @@ export default function DatabaseConnectionForm() {
                   name="database"
                   value={formData.database}
                   onChange={handleChange}
-                  placeholder="sqlpilot_demo"
+                  placeholder="C:\databases\sqlpilot_demo.db"
                   className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
                 />
 
-              </div>
-
-              {/* Username */}
-              <div>
-
-                <label
-                  htmlFor="username"
-                  className="mb-2 block text-xs font-medium text-zinc-400"
-                >
-                  Username
-                </label>
-
-                <input
-                  id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  placeholder="postgres"
-                  className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-                />
+                <p className="mt-2 text-xs text-zinc-600">
+                  Enter the path to an existing SQLite database file.
+                </p>
 
               </div>
 
-              {/* Password */}
-              <div>
+            ) : (
 
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-xs font-medium text-zinc-400"
-                >
-                  Password
-                </label>
+              <div className="mt-8 grid gap-x-5 gap-y-5 md:grid-cols-2">
 
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
-                />
+                {/* Host */}
+                <div className="md:col-span-2">
+
+                  <label
+                    htmlFor="host"
+                    className="mb-2 block text-xs font-medium text-zinc-400"
+                  >
+                    Host
+                  </label>
+
+                  <input
+                    id="host"
+                    name="host"
+                    value={formData.host}
+                    onChange={handleChange}
+                    placeholder="localhost"
+                    className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
+                  />
+
+                </div>
+
+                {/* Port */}
+                <div>
+
+                  <label
+                    htmlFor="port"
+                    className="mb-2 block text-xs font-medium text-zinc-400"
+                  >
+                    Port
+                  </label>
+
+                  <input
+                    id="port"
+                    name="port"
+                    type="number"
+                    value={formData.port}
+                    onChange={handleChange}
+                    className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
+                  />
+
+                </div>
+
+                {/* Database */}
+                <div>
+
+                  <label
+                    htmlFor="database"
+                    className="mb-2 block text-xs font-medium text-zinc-400"
+                  >
+                    Database name
+                  </label>
+
+                  <input
+                    id="database"
+                    name="database"
+                    value={formData.database}
+                    onChange={handleChange}
+                    placeholder={
+                      formData.db_type === "mysql"
+                        ? "sqlpilot_demo"
+                        : "sqlpilot_demo"
+                    }
+                    className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
+                  />
+
+                </div>
+
+                {/* Username */}
+                <div>
+
+                  <label
+                    htmlFor="username"
+                    className="mb-2 block text-xs font-medium text-zinc-400"
+                  >
+                    Username
+                  </label>
+
+                  <input
+                    id="username"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder={
+                      formData.db_type === "mysql"
+                        ? "root"
+                        : "postgres"
+                    }
+                    className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
+                  />
+
+                </div>
+
+                {/* Password */}
+                <div>
+
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-xs font-medium text-zinc-400"
+                  >
+                    Password
+                  </label>
+
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="••••••••"
+                    className="h-12 w-full rounded-xl border border-zinc-800 bg-[#080808] px-4 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/10"
+                  />
+
+                </div>
 
               </div>
 
-            </div>
-
+            )}
             {/* Action */}
             <div className="mt-8 flex flex-col gap-4 border-t border-zinc-800 pt-6 sm:flex-row sm:items-center sm:justify-between">
 

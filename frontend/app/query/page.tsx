@@ -35,7 +35,7 @@ export default function QueryPage() {
 
   if (checking || !connected) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-black">
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-zinc-700 border-t-blue-500" />
 
@@ -48,7 +48,7 @@ export default function QueryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black">
+    <main className="min-h-screen bg-zinc-950">
       <QueryWorkspace />
     </main>
   );

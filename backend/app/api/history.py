@@ -1,9 +1,9 @@
 from fastapi import APIRouter
+from sqlalchemy import text
 
 from app.services.database_context import DatabaseContext
+from app.services.query_history_service import QueryHistoryService
 from app.schemas.query_history import QueryHistoryResponse
-
-from sqlalchemy import text
 
 
 router = APIRouter(
@@ -18,11 +18,20 @@ router = APIRouter(
 )
 def get_query_history():
 
-    engine = DatabaseContext.get_engine()
+    # Get currently active database connection
+    connection_id = DatabaseContext.get_connection_id()
 
-    if engine is None:
+    # No database is currently active
+    if connection_id is None:
         return []
 
+    # Ensure SQLPilot's internal history table exists
+    QueryHistoryService.initialize()
+
+    # Use SQLPilot's internal history database
+    engine = QueryHistoryService._get_engine()
+
+    # Return history only for the active connection
     query = text("""
         SELECT
             id,
@@ -30,12 +39,18 @@ def get_query_history():
             generated_sql,
             created_at
         FROM queries
+        WHERE connection_id = :connection_id
         ORDER BY created_at DESC
     """)
 
     with engine.connect() as conn:
 
-        result = conn.execute(query)
+        result = conn.execute(
+            query,
+            {
+                "connection_id": connection_id
+            }
+        )
 
         rows = [
             dict(row._mapping)
