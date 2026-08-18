@@ -64,17 +64,20 @@ class DatabaseService:
             # Create engine
             engine = create_engine(
                 connection_url,
-                pool_pre_ping=True
+                pool_pre_ping=True,
+                connect_args={
+                    "connect_timeout": 10
+                }
             )
 
-            # Save engine globally
-            DatabaseContext.set_engine(engine)
-
-            print("ENGINE SAVED:", engine)
-
-            # Test connection
+            # Test connection before saving it globally
             with engine.connect():
                 pass
+
+            # Save only a verified connection
+            DatabaseContext.set_engine(engine)
+
+            print("VERIFIED ENGINE SAVED")
 
             # Extract schema
             schema = SchemaExtractor.extract(engine)
@@ -154,10 +157,13 @@ class DatabaseService:
             # Create engine
             engine = create_engine(
                 connection_url,
-                pool_pre_ping=True
+                pool_pre_ping=True,
+                connect_args={
+                    "connect_timeout": 10
+                }
             )
 
-            # Test connection
+            # Test connection before saving it globally
             with engine.connect():
                 pass
 

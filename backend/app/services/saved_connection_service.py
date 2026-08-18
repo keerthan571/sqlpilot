@@ -64,6 +64,93 @@ class SavedConnectionService:
             )
 
     @classmethod
+    def save(cls, config):
+
+        cls.initialize()
+
+        if config.db_type == "sqlite":
+            name = config.database
+            host = "local"
+            port = 0
+            username = "local"
+        else:
+            name = f"{config.db_type}_{config.database}"
+            host = config.host
+            port = config.port
+            username = config.username
+
+        cipher = cls._get_cipher()
+
+        encrypted_password = cipher.encrypt(
+            config.password.encode()
+        ).decode()
+
+        engine = cls._get_engine()
+
+        with engine.begin() as connection:
+
+            existing = connection.execute(
+                text(
+                    """
+                    SELECT id
+                    FROM saved_connections
+                    WHERE
+                        db_type = :db_type
+                        AND host = :host
+                        AND port = :port
+                        AND username = :username
+                        AND database_name = :database_name
+                    """
+                ),
+                {
+                    "db_type": config.db_type,
+                    "host": host,
+                    "port": port,
+                    "username": username,
+                    "database_name": config.database
+                }
+            ).fetchone()
+
+            if existing:
+                return existing.id
+
+            result = connection.execute(
+                text(
+                    """
+                    INSERT INTO saved_connections (
+                        name,
+                        db_type,
+                        host,
+                        port,
+                        username,
+                        encrypted_password,
+                        database_name
+                    )
+                    VALUES (
+                        :name,
+                        :db_type,
+                        :host,
+                        :port,
+                        :username,
+                        :encrypted_password,
+                        :database_name
+                    )
+                    """
+                ),
+                {
+                    "name": name,
+                    "db_type": config.db_type,
+                    "host": host,
+                    "port": port,
+                    "username": username,
+                    "encrypted_password": encrypted_password,
+                    "database_name": config.database
+                }
+            )
+
+            return result.lastrowid
+
+    @classmethod
     def list_connections(cls):
 
         cls.initialize()
