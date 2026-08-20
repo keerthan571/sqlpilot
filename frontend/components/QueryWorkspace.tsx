@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import QueryHistory from "@/components/QueryHistory";
@@ -10,11 +10,38 @@ export default function QueryWorkspace() {
 
   const [question, setQuestion] = useState("");
   const [sql, setSql] = useState("");
+  const [explanation, setExplanation] = useState("");
   const [rows, setRows] = useState<any[]>([]);
   const [queryExecuted, setQueryExecuted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const [databaseType, setDatabaseType] = useState("");
+  const [databaseName, setDatabaseName] = useState("");
+
+  useEffect(() => {
+    const getDatabaseStatus = async () => {
+      try {
+        const response = await api.get(
+          "/api/database/status"
+        );
+
+        const data = response.data;
+
+        if (data.connected) {
+          setDatabaseType(data.database_type || "");
+          setDatabaseName(data.database_name || "");
+        }
+      } catch (error) {
+        console.error(
+          "DATABASE STATUS ERROR:",
+          error
+        );
+      }
+    };
+
+    getDatabaseStatus();
+  }, []);
 
   const disconnectDatabase = async () => {
     try {
@@ -46,6 +73,7 @@ export default function QueryWorkspace() {
       setLoading(true);
       setError("");
       setSql("");
+      setExplanation("");
       setRows([]);
       setQueryExecuted(false);
 
@@ -69,6 +97,7 @@ export default function QueryWorkspace() {
       }
 
       setSql(data.sql || "");
+      setExplanation(data.explanation || "");
       setRows(data.rows || []);
       setQueryExecuted(true);
 
@@ -79,6 +108,7 @@ export default function QueryWorkspace() {
       console.error("API ERROR:", error);
 
       setSql("");
+      setExplanation("");
       setRows([]);
 
       if (error.response) {
@@ -127,7 +157,19 @@ export default function QueryWorkspace() {
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
 
                     <span className="text-sm text-zinc-400">
-                      Database connected and ready
+                      Connected to{" "}
+                      <span className="font-medium capitalize text-zinc-200">
+                        {databaseType}
+                      </span>
+
+                      {databaseName && (
+                        <>
+                          {" — "}
+                          <span className="font-mono text-zinc-300">
+                            {databaseName}
+                          </span>
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -275,6 +317,35 @@ export default function QueryWorkspace() {
           <pre className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-4 text-sm leading-7 text-emerald-400">
             {sql}
           </pre>
+
+        </section>
+      )}
+
+      {/* SQL Explanation */}
+      {explanation && !error && (
+        <section className="mt-6 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 shadow-xl shadow-black/10 sm:p-6">
+
+          <div className="flex items-start gap-4">
+
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-lg">
+              💡
+            </div>
+
+            <div>
+              <h2 className="font-semibold text-white">
+                SQL Explanation
+              </h2>
+
+              <p className="mt-1 text-sm text-zinc-500">
+                What this generated query does
+              </p>
+
+              <p className="mt-4 text-sm leading-7 text-zinc-300">
+                {explanation}
+              </p>
+            </div>
+
+          </div>
 
         </section>
       )}

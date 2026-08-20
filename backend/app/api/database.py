@@ -56,6 +56,32 @@ def disconnect_database():
 @router.get("/status")
 def database_status():
 
+    engine = DatabaseContext.get_engine()
+    connection_id = DatabaseContext.get_connection_id()
+
+    if engine is None or connection_id is None:
+        return {
+            "connected": False,
+            "connection_id": None,
+            "database_type": None,
+            "database_name": None
+        }
+
+    saved_connection = SavedConnectionService.get_connection(
+        connection_id
+    )
+
+    if not saved_connection:
+        return {
+            "connected": False,
+            "connection_id": None,
+            "database_type": None,
+            "database_name": None
+        }
+
     return {
-        "connected": DatabaseContext.get_engine() is not None
+        "connected": True,
+        "connection_id": connection_id,
+        "database_type": saved_connection["db_type"],
+        "database_name": saved_connection["database_name"]
     }

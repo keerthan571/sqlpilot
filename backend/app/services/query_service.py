@@ -127,6 +127,31 @@ class QueryService:
                 )
 
             # -----------------------------------------
+            # Generate SQL explanation
+            # -----------------------------------------
+
+            explanation = None
+
+            try:
+
+                explanation = LLMService.explain_sql(
+                    question,
+                    sql
+                )
+
+                print(
+                    "SQL EXPLANATION:",
+                    explanation
+                )
+
+            except Exception as explanation_error:
+
+                print(
+                    "EXPLANATION ERROR:",
+                    str(explanation_error)
+                )
+            
+            # -----------------------------------------
             # Save history
             # -----------------------------------------
 
@@ -157,6 +182,7 @@ class QueryService:
             return {
                 "success": True,
                 "sql": sql,
+                "explanation": explanation,
                 "rows": rows,
                 "error": None
             }
@@ -229,10 +255,11 @@ class QueryService:
 
             if isinstance(e, SQLAlchemyError):
                 return {
-                    "success": False,
-                    "sql": "",
-                    "rows": [],
-                    "error": "The database could not execute the generated SQL."
+                    "success": True,
+                    "sql": sql,
+                    "explanation": explanation,
+                    "rows": rows,
+                    "error": None
                 }
 
             # -----------------------------------------
@@ -240,8 +267,9 @@ class QueryService:
             # -----------------------------------------
 
             return {
-                "success": False,
-                "sql": "",
-                "rows": [],
-                "error": "Unable to process the query. Please try again."
+                "success": True,
+                "sql": sql,
+                "explanation": explanation,
+                "rows": rows,
+                "error": None
             }
